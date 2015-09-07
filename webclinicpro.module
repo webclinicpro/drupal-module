@@ -1,0 +1,189 @@
+<?php
+/**
+ * @file
+ * Add a security seal to the bottom right side of the website.
+ */
+
+
+/**
+ * Implements hook_block_info().
+ */
+function webclinicpro_block_info() {
+    $blocks['webclinicpro'] = array(
+        'info' => t('webClinic Pro'),
+    );
+    
+    return $blocks;
+} 
+
+
+function webclinicpro_block_view($delta = '') {
+    $block = array(); 
+    
+    switch ($delta) {
+        case 'webclinicpro':
+            $block['content'] = webclinicpro_block_contents();
+            break;
+    }
+    
+    return $block;    
+}
+
+
+function webclinicpro_block_configure($delta) {
+    $form = array();
+    
+    switch($delta) {
+        case 'webclinicpro':
+            $form['webclinicpro_key'] = array(
+                '#type' => 'textfield',
+                '#title' => t('Key'),
+                '#size' => 50,
+                '#default_value' => variable_get('webclinicpro_key'),
+            );
+            break;
+    }
+    
+    return $form;
+}
+
+
+function webclinicpro_block_save($delta = '', $edit = array()) {
+    switch($delta) {
+        case 'webclinicpro':
+            variable_set('webclinicpro_key', $edit['webclinicpro_key']);
+            break;
+    }
+    
+    return;
+}
+
+
+function webclinicpro_block_contents() {
+    $block = array();
+    
+    $file = "https://www.webclinicpro.com/seal.php";
+    if (function_exists('curl_version')) {
+        $curl = curl_init();
+        curl_setopt($curl, CURLOPT_URL, $file);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($curl, CURLOPT_POST, 1);
+        curl_setopt($curl, CURLOPT_POSTFIELDS,
+            "key=" . variable_get('webclinicpro_key'));
+                    
+        $content = curl_exec($curl);
+        curl_close($curl);
+    } else if (file_get_contents(__FILE__) && ini_get('allow_url_fopen')) {
+        $content = file_get_contents($file);
+    } else {
+        //echo 'You have neither cUrl installed nor allow_url_fopen activated. Please setup one of those!';
+    }
+
+    $block = array(
+      '#type' => 'markup',
+      '#markup' => $content,
+      '#suffix' => '',
+    );
+
+    return $block;
+}
+
+
+
+/**
+ * Checks the current page and see if we need to redirect to the secure or
+ * insecure version of the page.
+ */
+function webclinicpro_redirect() {
+  global $base_url, $is_https, $user;
+
+  if (!$is_https) {
+    webclinicpro_log('Switch User to secure', $path);
+    webclinicpro_goto(TRUE);
+  }
+
+  // Correct the base_url so that everything comes from HTTPS.
+  if ($is_https) {
+    $base_url = webclinicpro_baseurl();
+  }
+}
+
+
+/**
+ * Redirects the current page to the secure or insecure version.
+ *
+ * @param $secure
+ *   Determines which version of the set to move to.
+ */
+function webclinicpro_goto($secure) {
+
+  $url['path'] = drupal_is_front_page() ? '' : $_GET['q'];
+  $url['query'] = $_GET;
+  unset($url['query']['q']);
+  $url['https'] = $secure;
+  $url['base_url'] = securepages_baseurl($secure);
+  $url['absolute'] = TRUE;
+  $url['external'] = FALSE; // prevent an open redirect
+
+  // Check for the overlay.  Attempting to switch protocols during an XHR
+  // isn't allowed by the browser's same-origin policy, so we must close the overlay.
+  if (module_exists('overlay') && overlay_get_mode() == 'child') {
+    overlay_close_dialog($url['path'], $url);
+  }
+  elseif (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest') {
+    return;
+  }
+  else {
+    // Setting the redirect headers manually allows them to be cached.
+    drupal_add_http_header('Location', url($url['path'], $url));
+    drupal_add_http_header('Status', '302 Found');
+    print "302 Found";
+
+    // Store the response in the page cache.
+    if (variable_get('cache', 0) && ($cache = drupal_page_set_cache())) {
+      drupal_serve_page_from_cache($cache);
+    }
+    else {
+      ob_flush();
+    }
+    exit();
+  }
+}
+
+
+/**
+ * Returns the secure base path.
+ */
+function webclinicpro_baseurl($secure = TRUE) {
+  global $base_url;
+
+  //  Change base_url to https.
+  return preg_replace('/http[s]?:\/\//i', ($secure ? 'https://' : 'http://'), $base_url, 1);
+}
+
+
+function webclinicpro_log($text, $path, $pattern = NULL) {
+  if ('webclinicpro', 0)) {
+    $options = array(
+      '@path' => $path,
+      '@line' => t('NF'),
+      '@pattern' => '',
+    );
+    if ($pattern) {
+      if (!drupal_match_path($path, $pattern) && function_exists('drupal_get_path_alias')) {
+        $path = drupal_get_path_alias($path);
+      }
+
+      $pattern_parts = explode("\n", $pattern);
+      foreach ($pattern_parts as $line => $part) {
+        if (drupal_match_path($path, $part)) {
+          $options['@line'] = $line+1;
+          $options['@pattern'] = $part;
+          break;
+        }
+      }
+    }
+    drupal_set_message(t('SP: ' . $text, $options), 'warning', FALSE);
+  }
+}
+?>

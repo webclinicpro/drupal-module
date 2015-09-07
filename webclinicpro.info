@@ -1,0 +1,7 @@
+name = webClinic Pro
+description = Add a security seal to the bottom right side of the website.
+package = webClinic Pro
+core = 7.x
+
+scripts[] = webclinicpro.js
+stylesheets[all][] = webclinicpro.css
