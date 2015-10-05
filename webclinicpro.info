@@ -5,3 +5,5 @@ core = 7.x
 
 scripts[] = webclinicpro.js
 stylesheets[all][] = webclinicpro.css
+
+project status url = 'https://github.com/webclinicpro/drupal-module.git'

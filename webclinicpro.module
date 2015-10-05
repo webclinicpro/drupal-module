@@ -1,8 +1,87 @@
 <?php
 /**
  * @file
- * Add a security seal to the bottom right side of the website.
+ * Adds webClinic Pro security settings.
+ * @company webClinic Pro <https://www.webclinicpro.com>
+ * @author Jason D. Richmond <info@webclinicpro.com>
+ * @created October 1st, 2015
  */
+
+
+/**
+ * Implements hoom_menu().
+ */
+function webclinicpro_menu() {
+    $items['admin/config/system/webclinicpro'] = array(
+        'title' => 'webClinic Pro',
+        'description' => 'Security settings for webClinic Pro subscribers.',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('webclinicpro_admin_settings'),
+        'access arguments' => array('administer site configuration'),
+        'type' => MENU_NORMAL_ITEM,
+    );
+    
+    return $items;
+}
+
+
+/**
+ * Implements hook_admin_settings().
+ */
+function webclinicpro_admin_settings() {
+        
+    $form['webclinicpro_subscriber_id'] = array(
+        '#type' => 'textfield',
+        '#title' => t('webClinic Pro Subscriber ID'),
+        '#default_value' => variable_get('webclinicpro_subscriber_id', NULL),
+        '#description' => t('The webClinic Pro Subscriber ID is found in the client administration section of the webClinic Pro website.  The ID is needed to authenticate use of this moduel.'),
+    );
+
+    $form['webclinicpro_subscriber_key'] = array(
+        '#type' => 'textfield',
+        '#title' => t('webClinic Pro Subscriber KEY'),
+        '#default_value' => variable_get('webclinicpro_subscriber_key', NULL),
+        '#description' => t('The webClinic Pro Subscriber KEY is found in the client administration section of the webClinic Pro website. The KEY is needed to authenticate use of this moduel.'),
+    );
+     
+    $options = array('None', 'Style #1 - Black Text with Transparent Background', 'Style #2 - White Text with Transparent Background');
+    $form['webclinicpro_block_seal'] = array(
+        '#type' => 'radios',
+        '#options' => $options,
+        '#title' => t('Enable protection seal?'),
+        '#default_value' => variable_get('webclinicpro_block_seal', 0),
+        '#description' => t('The webClinic Pro Protection Seal appears at the bottom right on all pages of the website.'),
+    );
+    
+    $form['webclinicpro_forced_ssl'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Force entire website to use SSL?'),
+        '#default_value' => variable_get('webclinicpro_forced_ssl', TRUE),
+        '#description' => t('This is often referred to as HTTPS Everywhere and is highly encouraged by Google for enhancing website protection.  <em>Don\'t use Flexible SSL or your website may become inoperable.</em>'),
+    );
+    
+    $form['webclinicpro_cache'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Enable website caching?'),
+        '#default_value' => variable_get('webclinicpro_cache', TRUE),
+        '#description' => t('This will cache html, JavaScript, and Cascading Style Sheets to speed delivery and reduce load on the web server.'),
+    );
+    
+    $form['#submit'][] = 'webclinicpro_admin_settings_submit';
+    return system_settings_form($form);
+}
+
+
+/**
+ * Implementation of hook_admin_settings_submit().
+ */
+function webclinicpro_admin_settings_submit($form, &$form_state) {
+    if (isset($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+        drupal_set_message(t('Web Application Firewall Enabled | ' . $_SERVER['REMOTE_ADDR']), 'status');
+    } else {
+        drupal_set_message(t('Web Application Firewall Disabled | ' . $_SERVER['REMOTE_ADDR']), 'status');
+    }
+}
 
 
 /**
@@ -17,6 +96,9 @@ function webclinicpro_block_info() {
 } 
 
 
+/**
+ * Implements hook_block_view().
+ */
 function webclinicpro_block_view($delta = '') {
     $block = array(); 
     
@@ -30,36 +112,21 @@ function webclinicpro_block_view($delta = '') {
 }
 
 
-function webclinicpro_block_configure($delta) {
-    $form = array();
+function webclinicpro_page_alter(&$page) {
     
-    switch($delta) {
-        case 'webclinicpro':
-            $form['webclinicpro_key'] = array(
-                '#type' => 'textfield',
-                '#title' => t('Key'),
-                '#size' => 50,
-                '#default_value' => variable_get('webclinicpro_key'),
-            );
-            break;
+    if (variable_get('webclinicpro_block_seal') != 0) {
+        $page['page_bottom']['my_extra_element'] = array(
+            '#markup' => webclinicpro_footer(),
+            '#weight' => 25,
+        );
     }
     
-    return $form;
 }
 
-
-function webclinicpro_block_save($delta = '', $edit = array()) {
-    switch($delta) {
-        case 'webclinicpro':
-            variable_set('webclinicpro_key', $edit['webclinicpro_key']);
-            break;
-    }
-    
-    return;
-}
-
-
-function webclinicpro_block_contents() {
+/**
+ * Custom function for retrieving code for seal.
+ */
+function webclinicpro_footer() {
     $block = array();
     
     $file = "https://www.webclinicpro.com/seal.php";
@@ -79,33 +146,31 @@ function webclinicpro_block_contents() {
         //echo 'You have neither cUrl installed nor allow_url_fopen activated. Please setup one of those!';
     }
 
-    $block = array(
-      '#type' => 'markup',
-      '#markup' => $content,
-      '#suffix' => '',
-    );
-
-    return $block;
+    return $content;
 }
 
 
-
 /**
- * Checks the current page and see if we need to redirect to the secure or
- * insecure version of the page.
+ * Implements hook_init().
  */
-function webclinicpro_redirect() {
-  global $base_url, $is_https, $user;
+function webclinicpro_init() {
+    global $base_url, $is_https, $user;
+    
+    if (!$is_https && variable_get('webclinicpro_forced_ssl') == TRUE) {
+        //webclinicpro_log('Switch User to secure', $path);
+        webclinicpro_goto(TRUE);
+    }
 
-  if (!$is_https) {
-    webclinicpro_log('Switch User to secure', $path);
-    webclinicpro_goto(TRUE);
-  }
-
-  // Correct the base_url so that everything comes from HTTPS.
-  if ($is_https) {
-    $base_url = webclinicpro_baseurl();
-  }
+    // Correct the base_url so that everything comes from HTTPS.
+    if ($is_https) {
+        $base_url = webclinicpro_baseurl();
+    }
+    
+    // Force use of correct Remote Address.
+    if (isset($_SERVER['HTTP_CF_CONNECTING_IP'])) { 
+        $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP']; 
+    }
+    
 }
 
 
@@ -121,7 +186,7 @@ function webclinicpro_goto($secure) {
   $url['query'] = $_GET;
   unset($url['query']['q']);
   $url['https'] = $secure;
-  $url['base_url'] = securepages_baseurl($secure);
+  $url['base_url'] = webclinicpro_baseurl($secure);
   $url['absolute'] = TRUE;
   $url['external'] = FALSE; // prevent an open redirect
 
@@ -162,28 +227,5 @@ function webclinicpro_baseurl($secure = TRUE) {
 }
 
 
-function webclinicpro_log($text, $path, $pattern = NULL) {
-  if ('webclinicpro', 0)) {
-    $options = array(
-      '@path' => $path,
-      '@line' => t('NF'),
-      '@pattern' => '',
-    );
-    if ($pattern) {
-      if (!drupal_match_path($path, $pattern) && function_exists('drupal_get_path_alias')) {
-        $path = drupal_get_path_alias($path);
-      }
 
-      $pattern_parts = explode("\n", $pattern);
-      foreach ($pattern_parts as $line => $part) {
-        if (drupal_match_path($path, $part)) {
-          $options['@line'] = $line+1;
-          $options['@pattern'] = $part;
-          break;
-        }
-      }
-    }
-    drupal_set_message(t('SP: ' . $text, $options), 'warning', FALSE);
-  }
-}
 ?>
