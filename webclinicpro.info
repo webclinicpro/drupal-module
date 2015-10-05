@@ -1,5 +1,5 @@
 name = webClinic Pro
-description = Add a security seal to the bottom right side of the website.
+description = Security module by Jason D. Richmond, <a href="https://www.webclinicpro.com">webClinic Pro</a>
 package = webClinic Pro
 core = 7.x
 
