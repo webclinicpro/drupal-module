@@ -2,6 +2,7 @@ name = webClinic Pro
 description = Security module by Jason D. Richmond, <a href="https://www.webclinicpro.com">webClinic Pro</a>
 package = webClinic Pro
 core = 7.x
+version = 1.0
 
 scripts[] = webclinicpro.js
 stylesheets[all][] = webclinicpro.css
