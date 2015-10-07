@@ -29,12 +29,11 @@ function webclinicpro_menu() {
  * Implements hook_admin_settings().
  */
 function webclinicpro_admin_settings() {
-
     $form['webclinicpro_subscriber_key'] = array(
         '#type' => 'textfield',
         '#title' => t('webClinic Pro Subscriber KEY'),
         '#default_value' => variable_get('webclinicpro_subscriber_key', NULL),
-        '#description' => t('The webClinic Pro Subscriber KEY is found in the client administration section of the webClinic Pro website. The KEY is needed to authenticate use of this moduel.'),
+        '#description' => t('The webClinic Pro Subscriber KEY is found in the client administration section of the webClinic Pro website. The KEY is needed to authenticate use of this module.'),
     );
      
     $options = array('None', 'Style #1 - Black Text with Transparent Background', 'Style #2 - White Text with Transparent Background');
@@ -89,19 +88,21 @@ function webclinicpro_block_info() {
 } 
 
 
-function webclinicpro_page_alter(&$page) {
-    
+/**
+ * Implements hook_page_alter().
+ */
+function webclinicpro_page_alter(&$page) {    
     if (variable_get('webclinicpro_block_seal') != 0) {
         $page['page_bottom']['my_extra_element'] = array(
             '#markup' => webclinicpro_footer(),
             '#weight' => 25,
         );
     }
-    
 }
 
+
 /**
- * Custom function for retrieving code for seal.
+ * Retrieves code for security seal.
  */
 function webclinicpro_footer() {
     $block = array();
@@ -129,11 +130,13 @@ function webclinicpro_footer() {
     }
 
     $content = drupal_json_decode($content);
-
     return html_entity_decode($content['result']['message']);
 }
 
 
+/**
+ * Implements hook_flush_caches().
+ */
 function webclinicpro_flush_caches() {
     $block = array();
     $data = array(
@@ -184,7 +187,6 @@ function webclinicpro_init() {
     if (isset($_SERVER['HTTP_CF_CONNECTING_IP'])) { 
         $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP']; 
     }
-    
 }
 
 
@@ -241,6 +243,9 @@ function webclinicpro_baseurl($secure = TRUE) {
 }
 
 
+/**
+ * Returns the base domain for use with API.
+ */
 function getUrl(){
     $pu = parse_url("http://".$_SERVER['SERVER_NAME']);
     $array = explode(".", $pu['host']);

@@ -1,10 +1,7 @@
 name = webClinic Pro
-description = Security module by Jason D. Richmond, <a href="https://www.webclinicpro.com">webClinic Pro</a>
+description = Security module for webClinic Pro subscribers.  Automates process of implementing and maintaining website security.
 package = webClinic Pro
 core = 7.x
-version = 1.0
 
 scripts[] = webclinicpro.js
 stylesheets[all][] = webclinicpro.css
-
-project status url = 'https://github.com/webclinicpro/drupal-module.git'
